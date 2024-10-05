@@ -31,26 +31,29 @@ type ChannelJSON struct {
 }
 
 type FlagValues struct {
-	Path             string
-	AllMessages      bool
-	ByYear           string
-	ExcludeChannels  string
-	SpecificChannels string
+	Path        string
+	Exclude     bool
+	Include     bool
+	AllMessages bool
+	ByYear      string
+	ByChannels  string
 }
 
 var (
 	channelJson  ChannelJSON
 	messagesJson MessagesJSON
 	flagValues   FlagValues
+	channelsList map[string]struct{} = make(map[string]struct{})
 	// wg       sync.WaitGroup
 )
 
 func parseFlags() {
-	flag.StringVar(&flagValues.Path, "path", MESSAGES_PATH, "path to 'messages'")
+	flag.StringVar(&flagValues.Path, "path", MESSAGES_PATH, "path to 'messages' directory")
 	flag.BoolVar(&flagValues.AllMessages, "all", true, "dump every message")
 	flag.StringVar(&flagValues.ByYear, "year", "", "dump every message from a specified year")
-	flag.StringVar(&flagValues.ExcludeChannels, "exclude", "", "dump every message excluding specified channels")
-	flag.StringVar(&flagValues.SpecificChannels, "specific", "", "dump every message only from specified channels")
+	flag.StringVar(&flagValues.ByChannels, "channels", "", "channels to exclude or include from the dump. [comma,separate,the,input]")
+	flag.BoolVar(&flagValues.Exclude, "exclude", false, "exclude specified channels from the dump")
+	flag.BoolVar(&flagValues.Include, "include", false, "only include specified channels from the dump")
 	flag.Parse()
 }
 
@@ -95,7 +98,9 @@ func readDirs(path string, dumpFile *os.File) {
 	}
 
 	if flagValues.ByYear != "" {
-		dumpAllMessagesByYear(dumpFile)
+		dumpByYear(dumpFile)
+	} else if flagValues.ByChannels != "" {
+		dumpByChannels(messagesJsonLength, dumpFile)
 	} else {
 		dumpAllMessages(messagesJsonLength, dumpFile)
 	}
@@ -112,7 +117,7 @@ func dumpAllMessages(messagesJsonLength int, dumpFile *os.File) {
 	}
 }
 
-func dumpAllMessagesByYear(dumpFile *os.File) {
+func dumpByYear(dumpFile *os.File) {
 	channelIDDumped := false
 	for _, m := range messagesJson {
 		// parsedTimestamp, err := time.Parse(TIMESTAMP_LAYOUT, m.Timestamp)
@@ -140,6 +145,25 @@ func dumpAllMessagesByYear(dumpFile *os.File) {
 	}
 }
 
+func dumpByChannels(messagesJsonLength int, dumpFile *os.File) {
+	_, channelIDExists := channelsList[channelJson.ID]
+	if flagValues.Exclude && channelIDExists {
+		return
+	}
+	if flagValues.Include && !channelIDExists {
+		return
+	}
+
+	dumpToFile(dumpFile, (channelJson.ID + ":\n"))
+	for i, m := range messagesJson {
+		if i+1 == messagesJsonLength {
+			dumpToFile(dumpFile, (strconv.FormatInt(m.ID, FORMATINT_BASE) + "\n\n"))
+		} else {
+			dumpToFile(dumpFile, (strconv.FormatInt(m.ID, FORMATINT_BASE) + ", "))
+		}
+	}
+}
+
 func dumpToFile(dumpFile *os.File, content string) {
 	_, err := dumpFile.WriteString(content)
 	if err != nil {
@@ -155,8 +179,18 @@ func createFile() (*os.File, error) {
 	return file, nil
 }
 
+func fillChannelsList() {
+	if flagValues.ByChannels != "" {
+		excludedChannels := strings.Split(flagValues.ByChannels, ",")
+		for _, e := range excludedChannels {
+			channelsList[e] = struct{}{}
+		}
+	}
+}
+
 func main() {
 	parseFlags()
+	fillChannelsList()
 
 	dumpFile, err := createFile()
 	if err != nil {
