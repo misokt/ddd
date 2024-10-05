@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -17,10 +18,12 @@ const (
 	MESSAGES_PATH      string = "messages"
 	DUMP_FILE          string = "messages.txt"
 	FORMATINT_BASE     int    = 10
+	// TIMESTAMP_LAYOUT   string = "2006-01-02 15:04:05"
 )
 
 type MessagesJSON []struct {
-	ID int64 `json:"ID,omitempty"`
+	ID        int64  `json:"ID,omitempty"`
+	Timestamp string `json:"Timestamp,omitempty"`
 }
 
 type ChannelJSON struct {
@@ -91,6 +94,14 @@ func readDirs(path string, dumpFile *os.File) {
 		return
 	}
 
+	if flagValues.ByYear != "" {
+		dumpAllMessagesByYear(dumpFile)
+	} else {
+		dumpAllMessages(messagesJsonLength, dumpFile)
+	}
+}
+
+func dumpAllMessages(messagesJsonLength int, dumpFile *os.File) {
 	dumpToFile(dumpFile, (channelJson.ID + ":\n"))
 	for i, m := range messagesJson {
 		if i+1 == messagesJsonLength {
@@ -98,6 +109,34 @@ func readDirs(path string, dumpFile *os.File) {
 		} else {
 			dumpToFile(dumpFile, (strconv.FormatInt(m.ID, FORMATINT_BASE) + ", "))
 		}
+	}
+}
+
+func dumpAllMessagesByYear(dumpFile *os.File) {
+	channelIDDumped := false
+	for _, m := range messagesJson {
+		// parsedTimestamp, err := time.Parse(TIMESTAMP_LAYOUT, m.Timestamp)
+		// if err != nil {
+		// 	log.Fatalf("error parsing timestamp. ERROR: %v\n", err)
+		// }
+		// fmt.Println(parsedTimestamp.Year(), i)
+
+		timestampSplit := strings.SplitN(m.Timestamp, "-", 2)
+		timestampYear := timestampSplit[0]
+
+		if timestampYear != flagValues.ByYear {
+			continue
+		}
+
+		if !channelIDDumped {
+			dumpToFile(dumpFile, (channelJson.ID + ":\n"))
+			channelIDDumped = true
+		}
+
+		dumpToFile(dumpFile, (strconv.FormatInt(m.ID, FORMATINT_BASE) + ", "))
+	}
+	if channelIDDumped {
+		dumpToFile(dumpFile, "\n\n")
 	}
 }
 
