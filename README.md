@@ -51,7 +51,7 @@ $ dump-discord-data.exe --include --channels 678678678678678,789789789789789 --y
 - the python script hung on me the first time I used it
 - heard complaint the python script took too long with larger amount of message files (10.000+)
 - uses flags. if you're going to make a CLI app, take advantage of flags
-- my own. so, I can blindly trust it now and any subsequent future updates
+- my own. so, I can blindly trust it now and any subsequent future changes
 
 ## exec time difference:
 

@@ -64,6 +64,8 @@ func pathWalk(dumpFile *os.File) error {
 		if err != nil {
 			return err
 		}
+		// there is an error here when specifying a certain path.
+		// info.Name() != flagValues.Path is mistakenly true. should fix later.
 		if info.Name() != flagValues.Path && info.IsDir() {
 			readDirs(path, dumpFile)
 		}
