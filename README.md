@@ -55,7 +55,7 @@ $ dump-discord-data.exe --include --channels 678678678678678,789789789789789 --y
 
 ## exec time difference:
 
-[(dumping all messages) top is the python script, bottom is this go binary.](screenshots/python-vs-go-exec-time.png)
+[(dumping all messages) top is the python script, bottom is this go binary.](./images/python-vs-go-exec-time.png)
 
 ## credits:
 
