@@ -42,9 +42,9 @@ type FlagValues struct {
 }
 
 var (
+    flagValues      FlagValues
     channelJson     ChannelJSON
     messagesJson    MessagesJSON
-    flagValues      FlagValues
     channelsList    map[string]struct{} = make(map[string]struct{})
     messagesCSVData [][]string          = [][]string{
         {"channelid", "messageid"},
@@ -77,7 +77,7 @@ func pathWalk(dumpFile *os.File, path string) error {
         return err
     }
 
-    dumpToFile(dumpFile, "TODO: remove this param")
+    dumpToFile(dumpFile)
     return nil
 }
 
@@ -104,21 +104,21 @@ func readDirs(path string, dumpFile *os.File) {
     }
 
     if flagValues.ByYear != "" {
-        dumpByYear(dumpFile)
+        dumpByYear()
     } else if flagValues.ByChannels != "" {
-        dumpByChannels(messagesJsonLength, dumpFile)
+        dumpByChannels()
     } else {
-        dumpAllMessages(messagesJsonLength, dumpFile)
+        dumpAllMessages()
     }
 }
 
-func dumpAllMessages(messagesJsonLength int, dumpFile *os.File) {
+func dumpAllMessages() {
     for _, m := range messagesJson {
         messagesCSVData = append(messagesCSVData, []string{channelJson.ID, strconv.FormatInt(m.ID, BASE_10)})
     }
 }
 
-func dumpByYear(dumpFile *os.File) {
+func dumpByYear() {
     for _, m := range messagesJson {
         parsedTimestamp, err := time.Parse(TIMESTAMP_LAYOUT, m.Timestamp)
         if err != nil {
@@ -138,7 +138,7 @@ func dumpByYear(dumpFile *os.File) {
     }
 }
 
-func dumpByChannels(messagesJsonLength int, dumpFile *os.File) {
+func dumpByChannels() {
     _, channelIDExists := channelsList[channelJson.ID]
     if flagValues.Exclude && channelIDExists {
         return
@@ -147,17 +147,10 @@ func dumpByChannels(messagesJsonLength int, dumpFile *os.File) {
         return
     }
 
-    dumpToFile(dumpFile, (channelJson.ID + ":\n"))
-    for i, m := range messagesJson {
-        if i+1 == messagesJsonLength {
-            dumpToFile(dumpFile, (strconv.FormatInt(m.ID, BASE_10) + "\n\n"))
-        } else {
-            dumpToFile(dumpFile, (strconv.FormatInt(m.ID, BASE_10) + ", "))
-        }
-    }
+    dumpAllMessages()
 }
 
-func dumpToFile(dumpFile *os.File, content string) {
+func dumpToFile(dumpFile *os.File) {
     writer := csv.NewWriter(dumpFile)
     if err := writer.WriteAll(messagesCSVData); err != nil {
         log.Fatalln("ERROR: failed writing to file:", err)
@@ -196,5 +189,5 @@ func main() {
         log.Fatalf("ERROR: failed walking path %s: %v\n", MESSAGES_DIR_PATH, err)
     }
 
-    fmt.Printf("dumped to '%s'\n", dumpFile.Name())
+    fmt.Printf("INFO: Dumped to '%s'\n", dumpFile.Name())
 }
