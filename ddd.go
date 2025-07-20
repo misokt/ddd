@@ -60,16 +60,14 @@ func parseFlags() {
     flag.Parse()
 }
 
-func pathWalk(dumpFile *os.File, path string) error {
-    defer dumpFile.Close()
-
-    err := filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
+func pathWalk(pathToWalk string) error {
+    err := filepath.Walk(pathToWalk, func(path string, info fs.FileInfo, err error) error {
         if err != nil {
             return err
         }
 
-        if info.IsDir() && info.Name() != path {
-            readDirs(path, dumpFile)
+        if info.IsDir() && info.Name() != pathToWalk {
+            readDirs(path)
         }
         return nil
     })
@@ -77,11 +75,10 @@ func pathWalk(dumpFile *os.File, path string) error {
         return err
     }
 
-    dumpToFile(dumpFile)
     return nil
 }
 
-func readDirs(path string, dumpFile *os.File) {
+func readDirs(path string) {
     cFile, err := os.ReadFile(filepath.Join(path, CHANNEL_JSON_PATH))
     if err != nil {
         log.Fatalln("ERROR: could not read channel file:", err)
@@ -184,10 +181,19 @@ func main() {
     if err != nil {
         log.Fatalln("ERROR: failed creating dump file:", err)
     }
+    defer dumpFile.Close()
 
-    if err := pathWalk(dumpFile, MESSAGES_DIR_PATH); err != nil {
-        log.Fatalf("ERROR: failed walking path %s: %v\n", MESSAGES_DIR_PATH, err)
+    if err := pathWalk(MESSAGES_DIR_PATH); err != nil {
+        log.Fatalf("ERROR: failed to recursively visit directories at '%s': %v\n", MESSAGES_DIR_PATH, err)
     }
 
-    fmt.Printf("INFO: Dumped to '%s'\n", dumpFile.Name())
+    // Exit if CSV only has headers, i.e. no message was found to export
+    if len(messagesCSVData) == 1 {
+        fmt.Println("INFO: Didn't find any message to export")
+        return
+    }
+
+    dumpToFile(dumpFile)
+
+    fmt.Printf("INFO: Messages dumped to '%s'\n", dumpFile.Name())
 }
