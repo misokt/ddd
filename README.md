@@ -1,62 +1,78 @@
 # dump-discord-data
 
+dump-discord-data (ddd) dumps your requested Discord data (from Messages folder) into a CSV format that can be submitted to request a GDPR deletion of your Discord messages.
+
+## build
+
+to build yourself:
+
+```console
+$ go build ddd.go
+```
+
+or, download latest version from [Releases](https://github.com/misokt/ddd/releases)
+
 ## usage:
 
 dump all messages from default path:
-```
-$ dump-discord-data.exe
-```
-
-dump all messages from specified year from specified path:
-```
-$ dump-discord-data.exe --path /path/to/messages/ --year 2022
+```console
+$ ddd.exe
 ```
 
-dump all messages excluding 1 channel:
-```
-$ dump-discord-data.exe --exclude --channels 123123123123123
-```
-
-dump all messages excluding multiple channels:
-```
-$ dump-discord-data.exe --exclude --channels 234234234234234,345345345345345
+dump all messages from specific year:
+```console
+$ ddd.exe -year 2018
 ```
 
-dump all messages only from specified channels:
-```
-$ dump-discord-data.exe --include --channels 456456456456456,567567567567567
+dump all messages excluding/including 1 channel:
+```console
+$ ddd.exe -exclude -channels 123123123123123
+$ ddd.exe -include -channels 100101018101001
 ```
 
-dump all messages only from specified channels from a specified year from a specified path:
+dump all messages excluding/including multiple channels:
+```console
+$ ddd.exe -exclude -channels 234234234234234,345345345345345
+$ ddd.exe -include -channels 456456456456456,567567567567567
 ```
-$ dump-discord-data.exe --include --channels 678678678678678,789789789789789 --year 2023 --path /path/to/messages/
+
+dump all messages only from specified channels from a specified year:
+```console
+$ ddd.exe -include -channels 678678678678678,789789789789789 -year 2023
 ```
 
 ## directory structure
 
-- where the executable should be placed to use default path:
+- where the executable should be placed:
 ```
 .
-└── package/
-    ├── dump-discord-data.exe
-    ├── messages/
+└── /
+    ├── ddd.exe
+    ├── Messages/
     └── README.txt
 ```
-- if specifying the path, include "messages" directory in the path
-- it is okay to have multiple directories under package. program looks specfically for "messages" directory
+
+- it is okay to have multiple folders where `ddd.exe` is. program will specifically look for "Messages" folder.
 
 ## (re)-written in go because:
 
-- easier to distribute a compiled binary that won't require additional installations
-- the python script hung on me the first time I used it
-- heard complaint the python script took too long with larger amount of message files (10.000+)
-- uses flags. if you're going to make a CLI app, take advantage of flags
-- my own. so, I can blindly trust it now and any subsequent future changes
+- I wanted to.
+- its easier to distribute a compiled binary that won't require additional installations.
+- uses flags instead of multiple scripts.
+- I can blindly trust it now and any subsequent future changes because I created it.
 
-## exec time difference:
+## exec time differences:
 
-[(dumping all messages) top is the python script, bottom is this go binary.](./images/python-vs-go-exec-time.png)
+python script takes longer to fail than it takes for `ddd` to dump all messages:
+
+![(dumping all messages) left is this go binary, right is the python script failing.](./images/python-takes-longer-to-fail.png)
+
+(the python script is failing because it checks for lowercase "messages" folder but Discord provides capitalied "Messages" folder.)
+
+previous version comparision in here: [images](./images)
 
 ## credits:
 
-to & inspired by the python script: [ishnz/bulk_deletion_helper](https://github.com/ishnz/bulk_deletion_helper)
+to & inspired by the python script: [ishnz/bulk_deletion_helper](https://github.com/ishnz/bulk_deletion_helper) *
+
+\* note: this python script does not work out of the box at the time of writing this.
