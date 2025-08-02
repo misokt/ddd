@@ -12,10 +12,11 @@ import (
     "strconv"
     "strings"
     "time"
+    "regexp"
 )
 
+var MESSAGES_DIR_PATH  string = "Messages"
 const (
-    MESSAGES_DIR_PATH  string = "Messages"
     MESSAGES_JSON_PATH string = "messages.json"
     CHANNEL_JSON_PATH  string = "channel.json"
     DUMP_FILE_CSV      string = "messages.csv"
@@ -39,6 +40,7 @@ type FlagValues struct {
     AllMessages bool
     ByYear      string
     ByChannels  string
+    Path        string
 }
 
 var (
@@ -55,18 +57,95 @@ func parseFlags() {
     flag.BoolVar(&flagValues.AllMessages, "all", true, "dump every message")
     flag.StringVar(&flagValues.ByYear, "year", "", "dump every message from a specified year")
     flag.StringVar(&flagValues.ByChannels, "channels", "", "channels to exclude or include from the dump. [comma,separate,the,input]")
+    flag.StringVar(&flagValues.Path, "path", "", "path to the Messages folder")
     flag.BoolVar(&flagValues.Exclude, "exclude", false, "exclude specified channels from the dump")
     flag.BoolVar(&flagValues.Include, "include", false, "only include specified channels from the dump")
     flag.Parse()
 }
 
+func minimalRecurseDirs(root string, re *regexp.Regexp, matchCount int) error {
+    dirEntries, err := os.ReadDir(root)
+    if err != nil {
+        return fmt.Errorf("ERROR: reading %s: %v", root, err)
+    }
+
+    foundMessagesDir := ""
+    for _, e := range dirEntries {
+        if !e.IsDir() {
+            continue
+        }
+        if matchCount > 0 {
+            break
+        }
+
+        firstLevelPath := filepath.Join(root, e.Name())
+        subEntries, err := os.ReadDir(firstLevelPath)
+        if err != nil {
+            return fmt.Errorf("ERROR: reading %s: %v", firstLevelPath, err)
+        }
+
+        fmt.Println("INFO: checking:", firstLevelPath)
+        for _, se := range subEntries {
+            if !se.IsDir() {
+                continue
+            }
+
+            if re.MatchString(se.Name()) {
+                fmt.Println("INFO: found a match inside:", firstLevelPath)
+                foundMessagesDir = firstLevelPath
+                matchCount++
+            }
+
+            if matchCount >= 3 {
+                fmt.Println("INFO: found 3 matches inside:", firstLevelPath)
+                MESSAGES_DIR_PATH = foundMessagesDir
+                return nil
+            }
+        }
+    }
+
+    if foundMessagesDir != "" {
+        MESSAGES_DIR_PATH = foundMessagesDir
+        return nil
+    } else {
+        return fmt.Errorf("WARN: could not find any directory with Messages inside")
+    }
+}
+
+func messagesDirExistence() string {
+    _, err := os.Stat(MESSAGES_DIR_PATH)
+    if err == nil {
+        return MESSAGES_DIR_PATH
+    }
+
+    fmt.Fprintf(os.Stderr, "WARN: could not find %s: %v\n", MESSAGES_DIR_PATH, err)
+
+    const REGEX_TO_MATCH string = `^c\d+$`
+    re, err := regexp.Compile(REGEX_TO_MATCH)
+    if err != nil {
+        log.Fatalln("ERROR: could not compile regex: %v", err)
+    }
+
+    matchCount := 0
+    currentDir := "."
+
+    if err := minimalRecurseDirs(currentDir, re, matchCount); err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        fmt.Fprintln(os.Stderr, "INFO: use the -path flag to pass the Messages folder")
+        os.Exit(0)
+    }
+
+    return MESSAGES_DIR_PATH
+}
+
 func pathWalk(pathToWalk string) error {
+    fmt.Println("INFO: Running on:", pathToWalk)
     err := filepath.Walk(pathToWalk, func(path string, info fs.FileInfo, err error) error {
         if err != nil {
             return err
         }
 
-        if info.IsDir() && info.Name() != pathToWalk {
+        if info.IsDir() && path != pathToWalk {
             readDirs(path)
         }
         return nil
@@ -183,17 +262,24 @@ func main() {
     }
     defer dumpFile.Close()
 
+    if flagValues.Path == "" {
+        MESSAGES_DIR_PATH = messagesDirExistence()
+    } else {
+        fmt.Println(flagValues.Path)
+        MESSAGES_DIR_PATH = flagValues.Path
+    }
+
     if err := pathWalk(MESSAGES_DIR_PATH); err != nil {
         log.Fatalf("ERROR: failed to recursively visit directories at '%s': %v\n", MESSAGES_DIR_PATH, err)
     }
 
     // Exit if CSV only has headers, i.e. no message was found to export
     if len(messagesCSVData) == 1 {
-        fmt.Println("INFO: Didn't find any message to export")
+        fmt.Println("INFO: didn't find any message to export")
         return
     }
 
     dumpToFile(dumpFile)
 
-    fmt.Printf("INFO: Messages dumped to '%s'\n", dumpFile.Name())
+    fmt.Printf("INFO: messages dumped to '%s'\n", dumpFile.Name())
 }
