@@ -265,7 +265,6 @@ func main() {
     if flagValues.Path == "" {
         MESSAGES_DIR_PATH = messagesDirExistence()
     } else {
-        fmt.Println(flagValues.Path)
         MESSAGES_DIR_PATH = flagValues.Path
     }
 
