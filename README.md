@@ -41,9 +41,14 @@ dump all messages only from specified channels from a specified year:
 $ ddd.exe -include -channels 678678678678678,789789789789789 -year 2023
 ```
 
+dump all messages from a specified path:
+```console
+$ ddd.exe -path /path/to/Messages/folder
+```
+
 ## directory structure
 
-- where the executable should be placed:
+where the executable should be placed:
 ```
 .
 └── /
@@ -53,6 +58,10 @@ $ ddd.exe -include -channels 678678678678678,789789789789789 -year 2023
 ```
 
 - it is okay to have multiple folders where `ddd.exe` is. program will specifically look for "Messages" folder.
+- in case of different language or "Messages" folder can't be found, the program will try to search for the right folder.
+
+    - if it finds the right folder, messages will be dumped from it.
+    - if it does not find the right folder, you can use the `-path` flag to pass in the folder that has the Messages. refer to the [usage](#usage) section.
 
 ## (re)-written in go because:
 
